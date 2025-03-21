@@ -102,7 +102,7 @@ namespace EnvanterServis
                 userName = userName.Split('\\')[1];
                 model = obj["Model"].ToString();
                 ramCapacity = (ulong)obj["TotalPhysicalMemory"];
-                ramGB = Math.Ceiling((decimal)(ramCapacity) / 1073741824).ToString("F2") + " GB";
+                ramGB = Math.Ceiling((decimal)(ramCapacity) / 1073741824).ToString("F2");
 
             }
 
@@ -116,7 +116,7 @@ namespace EnvanterServis
                     diskCapacity += (ulong)Math.Ceiling(diskDecimal);
 
                 }
-                diskGB = Math.Ceiling((decimal)(diskCapacity) / 1073741824).ToString("F2") + " GB";
+                diskGB = Math.Ceiling((decimal)(diskCapacity) / 1073741824).ToString("F2");
             }
 
             ManagementObjectSearcher macSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2");
