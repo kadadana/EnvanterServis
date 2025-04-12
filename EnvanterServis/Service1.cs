@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Management;
 using System.Net.Http;
 using System.ServiceProcess;
@@ -16,11 +18,12 @@ namespace EnvanterServis
         string seriNo;
         string computerName;
         string ramGB;
-        string diskGB;
+        long totalDiskGB = 0;
         string macAddress;
         string userName;
         string islemci;
         string model;
+        string driveInfo;
         readonly HttpClient _httpClient = new HttpClient();
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
         string xmlPath = programYolu + "\\appconfig.xml";
@@ -32,7 +35,7 @@ namespace EnvanterServis
             InitializeComponent();
         }
 
-        protected override void OnStart(string[] args)
+        protected override async void OnStart(string[] args)
         {
             Logger("Servis çalışmaya başladı." + DateTime.Now);
 
@@ -45,7 +48,7 @@ namespace EnvanterServis
                 Logger("Sunucu yolu bulunamadi.");
             }
             string veri = EnvanterBilgileriniAl();
-            EnvanterBilgileriniGonder(veri);
+            await EnvanterBilgileriniGonder(veri);
             timer.Interval = 1000 * 60 * 5;
             timer.Elapsed += new ElapsedEventHandler(TimerElapsed);
             timer.Enabled = true;
@@ -59,7 +62,7 @@ namespace EnvanterServis
 
         }
 
-        private void Timer2Elapsed(object source, ElapsedEventArgs e)
+        private static void Timer2Elapsed(object source, ElapsedEventArgs e)
         {
             File.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\Log.txt");
         }
@@ -69,25 +72,24 @@ namespace EnvanterServis
             Logger("Servis durdu." + DateTime.Now +"\n\n");
             timer.Stop();
         }
-        private void TimerElapsed(object source, ElapsedEventArgs e)
+        private async void TimerElapsed(object sender, ElapsedEventArgs e)
         {
             Logger("Servis Çalışıyor." + DateTime.Now);
             string veri = EnvanterBilgileriniAl();
-            EnvanterBilgileriniGonder(veri);
+            await EnvanterBilgileriniGonder(veri);
             if (DateTime.Now.Hour == 15 && DateTime.Now.Minute == 0)
             {
-                EnvanterBilgileriniGonder(veri);
+                await EnvanterBilgileriniGonder(veri);
                 Logger($"Log'a yazildi:\n {veri}");
             }
         }
         private string EnvanterBilgileriniAl()
         {
             ulong ramCapacity;
-            ulong diskCapacity = 0;
 
 
             ManagementObjectSearcher biosSearcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
-            foreach (ManagementObject obj in biosSearcher.Get())
+            foreach (ManagementObject obj in biosSearcher.Get().Cast<ManagementObject>())
             {
                 seriNo = obj["SerialNumber"].ToString();
 
@@ -95,7 +97,7 @@ namespace EnvanterServis
             }
 
             ManagementObjectSearcher compSearcher = new ManagementObjectSearcher("SELECT Name, Model, TotalPhysicalMemory, UserName FROM Win32_ComputerSystem");
-            foreach (ManagementObject obj in compSearcher.Get())
+            foreach (ManagementObject obj in compSearcher.Get().Cast<ManagementObject>())
             {
                 computerName = obj["Name"].ToString();
                 userName = obj["UserName"].ToString();
@@ -106,21 +108,27 @@ namespace EnvanterServis
 
             }
 
-            ManagementObjectSearcher diskSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_LogicalDisk WHERE DriveType = 3");
-            foreach (ManagementObject obj in diskSearcher.Get())
-            {
-                if (obj["Size"] != null)
-                {
-                    ulong diskSize = (ulong)obj["Size"];
-                    decimal diskDecimal = (decimal)diskSize;
-                    diskCapacity += (ulong)Math.Ceiling(diskDecimal);
+            int sayac = 1;
+            StringBuilder sb = new StringBuilder();
 
+            foreach (DriveInfo drive in DriveInfo.GetDrives())
+            {
+                if (drive.IsReady)
+                {
+                    totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
+                    sb.AppendLine($"\"Drive{sayac}Name\": \"{drive.Name}\"\",");
+                    sb.AppendLine($"\"Drive{sayac}TotalSizeGB\": \"{(drive.TotalSize/ (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine($"\"Drive{sayac}TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace/ (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    
+                    sayac++;
                 }
-                diskGB = Math.Ceiling((decimal)(diskCapacity) / 1073741824).ToString("F2");
             }
+            driveInfo = sb.ToString();
+
+            
 
             ManagementObjectSearcher macSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2");
-            foreach (ManagementObject obj in macSearcher.Get())
+            foreach (ManagementObject obj in macSearcher.Get().Cast<ManagementObject>())
             {
                 macAddress = obj["MacAddress"].ToString();
 
@@ -128,21 +136,24 @@ namespace EnvanterServis
 
 
             ManagementObjectSearcher procSearcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-            foreach (ManagementObject obj in procSearcher.Get())
+            foreach (ManagementObject obj in procSearcher.Get().Cast<ManagementObject>())
             {
                 islemci = obj["Name"].ToString().Trim();
 
             }
 
-            return $"SeriNo: {seriNo},\n" +
-                $"CompModel: {model},\n" +
-                $"CompName: {computerName},\n" +
-                $"RAM: {ramGB},\n" +
-                $"DiskGB: {diskGB},\n" +
-                $"MAC: {macAddress},\n" +
-                $"ProcModel: {islemci},\n" +
-                $"Username: {userName},\n" +
-                $"DateChanged: {(DateTime.Now).ToString()}\n";
+            return "{\n"+
+                $"\"SeriNo\": \"{seriNo}\",\n" +
+                $"\"CompModel\": \"{model}\",\n" +
+                $"\"CompName\": \"{computerName}\",\n" +
+                $"\"RAM\": \"{ramGB}\",\n" +
+                $"\"DiskGB\": \"{totalDiskGB.ToString("F2")}\",\n" +
+                $"\"MAC\": \"{macAddress}\",\n" +
+                $"\"ProcModel\": \"{islemci}\",\n" +
+                $"\"Username\": \"{userName}\",\n" +
+                $"{driveInfo}" +
+                $"\"DateChanged\": \"{(DateTime.Now).ToString()}\"\n" +
+                "}";
 
 
 
@@ -150,20 +161,9 @@ namespace EnvanterServis
         }
         private async Task EnvanterBilgileriniGonder(string veri)
         {
-            var jsonData = JsonConvert.SerializeObject(new
-            {
-                SeriNo = seriNo,
-                CompModel = model,
-                CompName = computerName,
-                RAM = ramGB,
-                DiskGB = diskGB,
-                MAC = macAddress,
-                ProcModel = islemci,
-                Username = userName,
-                DateChanged = (DateTime.Now).ToString()
-            });
+            
 
-            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+            var content = new StringContent(veri, Encoding.UTF8, "application/json");
 
             Logger($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
 
@@ -173,7 +173,7 @@ namespace EnvanterServis
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Logger($"Sunucuya gönderildi:\n {veri}");
+                    Logger($"-------------------------------------\n{veri}"+ "\nSunucuya basariyla gonderildi." +"\n-------------------------------------");
                 }
                 else
                 {
@@ -221,5 +221,6 @@ namespace EnvanterServis
             XmlNode node = xmlDoc.SelectSingleNode("/config/serverIp");
             return node?.InnerText ?? "Bulunamadi";
         }
+        
     }
 }
