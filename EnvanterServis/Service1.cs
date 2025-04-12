@@ -108,7 +108,7 @@ namespace EnvanterServis
 
             }
 
-            int sayac = 1;
+            int sayac = 0;
             StringBuilder sb = new StringBuilder();
 
             foreach (DriveInfo drive in DriveInfo.GetDrives())
@@ -116,9 +116,9 @@ namespace EnvanterServis
                 if (drive.IsReady)
                 {
                     totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
-                    sb.AppendLine($"\"Drive{sayac}Name\": \"{drive.Name}\"\",");
-                    sb.AppendLine($"\"Drive{sayac}TotalSizeGB\": \"{(drive.TotalSize/ (1024 * 1024 * 1024)).ToString("F2")}\",");
-                    sb.AppendLine($"\"Drive{sayac}TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace/ (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine($"\"Drive[{sayac}].Name\": \"{drive.Name}\"\",");
+                    sb.AppendLine($"\"Drive[{sayac}].TotalSizeGB\": \"{(drive.TotalSize/ (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine($"\"Drive[{sayac}].TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace/ (1024 * 1024 * 1024)).ToString("F2")}\",");
                     
                     sayac++;
                 }
