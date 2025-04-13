@@ -69,7 +69,7 @@ namespace EnvanterServis
 
         protected override void OnStop()
         {
-            Logger("Servis durdu." + DateTime.Now +"\n\n");
+            Logger("Servis durdu." + DateTime.Now + "\n\n");
             timer.Stop();
         }
         private async void TimerElapsed(object sender, ElapsedEventArgs e)
@@ -116,16 +116,18 @@ namespace EnvanterServis
                 if (drive.IsReady)
                 {
                     totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
-                    sb.AppendLine($"\"Drive[{sayac}].Name\": \"{drive.Name}\"\",");
-                    sb.AppendLine($"\"Drive[{sayac}].TotalSizeGB\": \"{(drive.TotalSize/ (1024 * 1024 * 1024)).ToString("F2")}\",");
-                    sb.AppendLine($"\"Drive[{sayac}].TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace/ (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine("    {");
+                    sb.AppendLine($"    \"Name\": \"{drive.Name}\",");
+                    sb.AppendLine($"    \"TotalSizeGB\": \"{(drive.TotalSize / (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine($"    \"TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace / (1024 * 1024 * 1024)).ToString("F2")}\",");
+                    sb.AppendLine("    },");
+
                     
-                    sayac++;
                 }
             }
             driveInfo = sb.ToString();
 
-            
+
 
             ManagementObjectSearcher macSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2");
             foreach (ManagementObject obj in macSearcher.Get().Cast<ManagementObject>())
@@ -142,7 +144,7 @@ namespace EnvanterServis
 
             }
 
-            return "{\n"+
+            return "{\n" +
                 $"\"SeriNo\": \"{seriNo}\",\n" +
                 $"\"CompModel\": \"{model}\",\n" +
                 $"\"CompName\": \"{computerName}\",\n" +
@@ -151,7 +153,9 @@ namespace EnvanterServis
                 $"\"MAC\": \"{macAddress}\",\n" +
                 $"\"ProcModel\": \"{islemci}\",\n" +
                 $"\"Username\": \"{userName}\",\n" +
-                $"{driveInfo}" +
+                $"\"Drives\": [\n" +
+                $"{driveInfo}\n" +
+                $"]\n" +
                 $"\"DateChanged\": \"{(DateTime.Now).ToString()}\"\n" +
                 "}";
 
@@ -161,7 +165,7 @@ namespace EnvanterServis
         }
         private async Task EnvanterBilgileriniGonder(string veri)
         {
-            
+
 
             var content = new StringContent(veri, Encoding.UTF8, "application/json");
 
@@ -173,7 +177,7 @@ namespace EnvanterServis
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Logger($"-------------------------------------\n{veri}"+ "\nSunucuya basariyla gonderildi." +"\n-------------------------------------");
+                    Logger($"-------------------------------------\n{veri}" + "\nSunucuya basariyla gonderildi." + "\n-------------------------------------");
                 }
                 else
                 {
@@ -221,6 +225,6 @@ namespace EnvanterServis
             XmlNode node = xmlDoc.SelectSingleNode("/config/serverIp");
             return node?.InnerText ?? "Bulunamadi";
         }
-        
+
     }
 }
