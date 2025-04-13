@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Management;
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,6 +24,7 @@ namespace EnvanterServis
         string islemci;
         string model;
         string driveInfo;
+        string lastIpAddress = "";
         readonly HttpClient _httpClient = new HttpClient();
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
         string xmlPath = programYolu + "\\appconfig.xml";
@@ -108,23 +109,25 @@ namespace EnvanterServis
 
             }
 
-            int sayac = 0;
             StringBuilder sb = new StringBuilder();
-
-            foreach (DriveInfo drive in DriveInfo.GetDrives())
+            var readyDrives = DriveInfo.GetDrives().Where(d => d.IsReady).ToList();
+            for (int i = 0; i < readyDrives.Count; i++)
             {
-                if (drive.IsReady)
-                {
-                    totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
-                    sb.AppendLine("    {");
-                    sb.AppendLine($"    \"Name\": \"{drive.Name}\",");
-                    sb.AppendLine($"    \"TotalSizeGB\": \"{(drive.TotalSize / (1024 * 1024 * 1024)).ToString("F2")}\",");
-                    sb.AppendLine($"    \"TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace / (1024 * 1024 * 1024)).ToString("F2")}\",");
+                var drive = readyDrives[i];
+
+                totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
+                sb.AppendLine("    {");
+                sb.AppendLine($"    \"Name\": \"{drive.Name}\\\",");
+                sb.AppendLine($"    \"TotalSizeGB\": \"{(drive.TotalSize / (1024 * 1024 * 1024)).ToString("F2")}\",");
+                sb.AppendLine($"    \"TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace / (1024 * 1024 * 1024)).ToString("F2")}\"");
+
+                if (i == readyDrives.Count - 1)
+                    sb.AppendLine("    }");
+                else
                     sb.AppendLine("    },");
 
-                    
-                }
             }
+
             driveInfo = sb.ToString();
 
 
@@ -144,6 +147,15 @@ namespace EnvanterServis
 
             }
 
+            foreach (var ip in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    lastIpAddress = ip.ToString();
+                    break;
+                }
+            }
+
             return "{\n" +
                 $"\"SeriNo\": \"{seriNo}\",\n" +
                 $"\"CompModel\": \"{model}\",\n" +
@@ -154,8 +166,9 @@ namespace EnvanterServis
                 $"\"ProcModel\": \"{islemci}\",\n" +
                 $"\"Username\": \"{userName}\",\n" +
                 $"\"Drives\": [\n" +
-                $"{driveInfo}\n" +
-                $"]\n" +
+                $"{driveInfo}" +
+                $"],\n" +
+                $"\"LastIpAddress\": \"{lastIpAddress}\",\n" +
                 $"\"DateChanged\": \"{(DateTime.Now).ToString()}\"\n" +
                 "}";
 
@@ -165,8 +178,6 @@ namespace EnvanterServis
         }
         private async Task EnvanterBilgileriniGonder(string veri)
         {
-
-
             var content = new StringContent(veri, Encoding.UTF8, "application/json");
 
             Logger($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
