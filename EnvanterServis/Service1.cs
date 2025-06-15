@@ -111,6 +111,7 @@ namespace EnvanterServis
 
             StringBuilder sb = new StringBuilder();
             var readyDrives = DriveInfo.GetDrives().Where(d => d.IsReady).ToList();
+            totalDiskGB = 0;
             for (int i = 0; i < readyDrives.Count; i++)
             {
                 var drive = readyDrives[i];
