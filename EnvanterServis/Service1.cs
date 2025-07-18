@@ -24,6 +24,8 @@ namespace EnvanterServis
         string islemci;
         string model;
         string driveInfo;
+        string osName;
+        string osVer;
         string lastIpAddress = "";
         readonly HttpClient _httpClient = new HttpClient();
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
@@ -109,6 +111,14 @@ namespace EnvanterServis
 
             }
 
+            ManagementObjectSearcher osSearcher = new ManagementObjectSearcher("SELECT Caption, Version FROM Win32_OperatingSystem");
+            foreach (ManagementObject obj in osSearcher.Get().Cast<ManagementObject>())
+            {
+                osName = obj["Caption"].ToString();
+                osVer = obj["Version"].ToString();
+
+            }
+
             StringBuilder sb = new StringBuilder();
             var readyDrives = DriveInfo.GetDrives().Where(d => d.IsReady).ToList();
             totalDiskGB = 0;
@@ -166,6 +176,8 @@ namespace EnvanterServis
                 $"\"MAC\": \"{macAddress}\",\n" +
                 $"\"ProcModel\": \"{islemci}\",\n" +
                 $"\"Username\": \"{userName}\",\n" +
+                $"\"OsName\": \"{osName}\",\n" +
+                $"\"OsVer\": \"{osVer}\",\n" +
                 $"\"Drives\": [\n" +
                 $"{driveInfo}" +
                 $"],\n" +
