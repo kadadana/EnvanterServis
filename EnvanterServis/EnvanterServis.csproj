@@ -9,7 +9,6 @@
     <RootNamespace>EnvanterServis</RootNamespace>
     <AssemblyName>EnvanterServis</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>false</IsWebBootstrapper>
@@ -55,7 +54,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
@@ -65,7 +64,7 @@
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
@@ -75,7 +74,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
@@ -85,7 +84,7 @@
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>

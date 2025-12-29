@@ -4,17 +4,20 @@ using System.Linq;
 using System.Management;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Xml;
+using System.Globalization;
 
 namespace EnvanterServis
 {
     public partial class Service1 : ServiceBase
     {
+        string apiKey = Environment.GetEnvironmentVariable("EYP_API_KEY");
         string seriNo;
         string computerName;
         string ramGB;
@@ -28,6 +31,7 @@ namespace EnvanterServis
         string osVer;
         string lastIpAddress = "";
         readonly HttpClient _httpClient = new HttpClient();
+
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
         string xmlPath = programYolu + "\\appconfig.xml";
         string _serverUrl;
@@ -107,8 +111,7 @@ namespace EnvanterServis
                 userName = userName.Split('\\')[1];
                 model = obj["Model"].ToString();
                 ramCapacity = (ulong)obj["TotalPhysicalMemory"];
-                ramGB = Math.Ceiling((decimal)(ramCapacity) / 1073741824).ToString("F2");
-
+                ramGB = Math.Ceiling((decimal)ramCapacity / 1073741824).ToString("F2", CultureInfo.InvariantCulture);
             }
 
             ManagementObjectSearcher osSearcher = new ManagementObjectSearcher("SELECT Caption, Version FROM Win32_OperatingSystem");
@@ -129,8 +132,8 @@ namespace EnvanterServis
                 totalDiskGB += drive.TotalSize / (1024 * 1024 * 1024);
                 sb.AppendLine("    {");
                 sb.AppendLine($"    \"Name\": \"{drive.Name}\\\",");
-                sb.AppendLine($"    \"TotalSizeGB\": \"{(drive.TotalSize / (1024 * 1024 * 1024)).ToString("F2")}\",");
-                sb.AppendLine($"    \"TotalFreeSpaceGB\": \"{(drive.TotalFreeSpace / (1024 * 1024 * 1024)).ToString("F2")}\"");
+                sb.AppendLine($"    \"TotalSizeGB\": {(drive.TotalSize / (1024 * 1024 * 1024)).ToString("F2", CultureInfo.InvariantCulture)},");
+                sb.AppendLine($"    \"TotalFreeSpaceGB\": {(drive.TotalFreeSpace / (1024 * 1024 * 1024)).ToString("F2", CultureInfo.InvariantCulture)}");
 
                 if (i == readyDrives.Count - 1)
                     sb.AppendLine("    }");
@@ -158,21 +161,15 @@ namespace EnvanterServis
 
             }
 
-            foreach (var ip in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    lastIpAddress = ip.ToString();
-                    break;
-                }
-            }
+            lastIpAddress = GetLocalIPv4();
+
 
             return "{\n" +
                 $"\"SeriNo\": \"{seriNo}\",\n" +
                 $"\"CompModel\": \"{model}\",\n" +
                 $"\"CompName\": \"{computerName}\",\n" +
-                $"\"RAM\": \"{ramGB}\",\n" +
-                $"\"DiskGB\": \"{totalDiskGB.ToString("F2")}\",\n" +
+                $"\"RAM\": {ramGB},\n" +
+                $"\"DiskGB\": {totalDiskGB.ToString("F2",CultureInfo.InvariantCulture)},\n" +
                 $"\"MAC\": \"{macAddress}\",\n" +
                 $"\"ProcModel\": \"{islemci}\",\n" +
                 $"\"Username\": \"{userName}\",\n" +
@@ -182,7 +179,7 @@ namespace EnvanterServis
                 $"{driveInfo}" +
                 $"],\n" +
                 $"\"LastIpAddress\": \"{lastIpAddress}\",\n" +
-                $"\"DateChanged\": \"{(DateTime.Now).ToString()}\"\n" +
+                $"\"DateChanged\": \"{DateTime.Now.ToString("o")}\"\n" +
                 "}";
 
 
@@ -191,6 +188,8 @@ namespace EnvanterServis
         }
         private async Task EnvanterBilgileriniGonder(string veri)
         {
+            _httpClient.DefaultRequestHeaders.Add("EYP_API_KEY", apiKey);
+
             var content = new StringContent(veri, Encoding.UTF8, "application/json");
 
             Logger($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
@@ -248,6 +247,30 @@ namespace EnvanterServis
 
             XmlNode node = xmlDoc.SelectSingleNode("/config/serverIp");
             return node?.InnerText ?? "Bulunamadi";
+        }
+        private string GetLocalIPv4()
+        {
+            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up)
+                    continue;
+
+                if (ni.Description.ToLower().Contains("virtual") ||
+                    ni.Name.ToLower().Contains("vbox") ||
+                    ni.Description.ToLower().Contains("hyper-v") ||
+                    ni.Name.ToLower().Contains("docker"))
+                    continue;
+
+                var ipProps = ni.GetIPProperties();
+                foreach (var ip in ipProps.UnicastAddresses)
+                {
+                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        return ip.Address.ToString();
+                    }
+                }
+            }
+            return "null";
         }
 
     }
