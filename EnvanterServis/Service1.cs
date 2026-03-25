@@ -17,7 +17,7 @@ namespace EnvanterServis
 {
     public partial class Service1 : ServiceBase
     {
-        string apiKey = Environment.GetEnvironmentVariable("EYP_API_KEY");
+        string apiKey = Environment.GetEnvironmentVariable("EYP_SERVICE_KEY");
         string seriNo;
         string computerName;
         string ramGB;
@@ -169,7 +169,7 @@ namespace EnvanterServis
                 $"\"CompModel\": \"{model}\",\n" +
                 $"\"CompName\": \"{computerName}\",\n" +
                 $"\"RAM\": {ramGB},\n" +
-                $"\"DiskGB\": {totalDiskGB.ToString("F2",CultureInfo.InvariantCulture)},\n" +
+                $"\"DiskGB\": {totalDiskGB.ToString("F2", CultureInfo.InvariantCulture)},\n" +
                 $"\"MAC\": \"{macAddress}\",\n" +
                 $"\"ProcModel\": \"{islemci}\",\n" +
                 $"\"Username\": \"{userName}\",\n" +
@@ -188,15 +188,15 @@ namespace EnvanterServis
         }
         private async Task EnvanterBilgileriniGonder(string veri)
         {
-            _httpClient.DefaultRequestHeaders.Add("EYP_API_KEY", apiKey);
-
-            var content = new StringContent(veri, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, _serverUrl);
+            request.Headers.Add("EYP_API_KEY", apiKey);
+            request.Content = new StringContent(veri, Encoding.UTF8, "application/json");
 
             Logger($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
 
             try
             {
-                var response = await _httpClient.PostAsync(_serverUrl, content);
+                var response = await _httpClient.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                 {
