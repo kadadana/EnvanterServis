@@ -50,20 +50,19 @@ namespace EnvanterServis
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
             inventoryTimer.Interval = 1000 * 60 * 5;
-            inventoryTimer.Elapsed += new ElapsedEventHandler(InventoryTimerElapsed);
-            inventoryTimer.Enabled = true;
+            inventoryTimer.Elapsed += InventoryTimerElapsed;
             inventoryTimer.Start();
 
-            logTimer.Interval = 1000 * 60 * 60;
-            logTimer.Elapsed += new ElapsedEventHandler(LogTimerElapsed);
-            logTimer.Enabled = true;
-            logTimer.Start();
-
             updateTimer.Interval = 1000 * 60 * 5;
-            updateTimer.Elapsed += new ElapsedEventHandler(UpdateTimerElapsed);
-            updateTimer.Enabled = true;
+            updateTimer.Elapsed += UpdateTimerElapsed;
             updateTimer.Start();
 
+            logTimer.Interval = 1000 * 60 * 60;
+            logTimer.Elapsed += LogTimerElapsed;
+            logTimer.Start();
+
+            _ = Task.Run(() => InventoryTimerElapsed(null, null));
+            _ = Task.Run(() => UpdateTimerElapsed(null, null));
         }
 
         private static void LogTimerElapsed(object source, ElapsedEventArgs e)
