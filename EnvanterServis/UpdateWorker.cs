@@ -11,9 +11,7 @@ public class UpdateWorker
     Logger logger = new Logger();
     private static readonly string DownloadUrl = "http://192.168.1.210:9000/deployments/EnvanterServis/latest/EnvanterServis.zip";
     private static readonly string VersionUrl = "http://192.168.1.210:9000/deployments/EnvanterServis/version.txt";
-    private static readonly string CurrentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
     private static readonly string ServiceName = "EnvanterServis";
-
     public async Task CheckUpdateSilently()
     {
         try
@@ -22,11 +20,18 @@ public class UpdateWorker
             {
                 client.DefaultRequestHeaders.Add("User-Agent", "EnvanterServis-Updater");
 
-                string latestVersion = (await client.GetStringAsync(VersionUrl)).Trim();
+                logger.LogWithMessage("Versiyon kontrolü yapılıyor...");
+                string latestVersionStr = (await client.GetStringAsync(VersionUrl)).Trim();
 
-                if (latestVersion != CurrentVersion)
+                Version latest = new Version(latestVersionStr);
+
+                Version current = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+                logger.LogWithMessage($"Sunucu Versiyonu: {latest} | Yerel Versiyon: {current}");
+
+                if (latest > current)
                 {
-                    logger.LogWithMessage($"Yeni versiyon bulundu: {latestVersion}");
+                    logger.LogWithMessage("Yeni güncelleme bulundu! İşlem başlıyor...");
 
                     string servicePath = AppDomain.CurrentDomain.BaseDirectory;
                     string zipPath = Path.Combine(servicePath, "update.zip");
@@ -40,11 +45,15 @@ public class UpdateWorker
 
                     ApplyZipUpdate(servicePath, zipPath, extractPath);
                 }
+                else
+                {
+                    logger.LogWithMessage("Yeni güncelleme yok!");
+                }
             }
         }
         catch (Exception ex)
         {
-            logger.LogWithMessage("Güncelleme hatası: " + ex.Message);
+            logger.LogWithMessage("Güncelleme akışında hata: " + ex.Message);
         }
     }
     private void ApplyZipUpdate(string servicePath, string zipPath, string extractPath)

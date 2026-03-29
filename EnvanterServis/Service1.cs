@@ -37,8 +37,9 @@ namespace EnvanterServis
 
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
         string _serverUrl = "http://192.168.1.210:5105/api/inventory";
-        Timer timer = new Timer();
-        Timer timer2 = new Timer();
+        Timer inventoryTimer = new Timer();
+        Timer logTimer = new Timer();
+        Timer updateTimer = new Timer();
         public Service1()
         {
             InitializeComponent();
@@ -49,41 +50,54 @@ namespace EnvanterServis
             Task.Run(() => _updateWorker.CheckUpdateSilently());
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
-            timer.Interval = 1000 * 60 * 5;
-            timer.Elapsed += new ElapsedEventHandler(TimerElapsed);
-            timer.Enabled = true;
-            timer.Start();
-            timer2.Interval = 1000 * 60 * 60;
-            timer2.Elapsed += new ElapsedEventHandler(Timer2Elapsed);
-            timer2.Enabled = true;
-            timer2.Start();
+            inventoryTimer.Interval = 1000 * 60 * 5;
+            inventoryTimer.Elapsed += new ElapsedEventHandler(InventoryTimerElapsed);
+            inventoryTimer.Enabled = true;
+            inventoryTimer.Start();
 
+            logTimer.Interval = 1000 * 60 * 60;
+            logTimer.Elapsed += new ElapsedEventHandler(LogTimerElapsed);
+            logTimer.Enabled = true;
+            logTimer.Start();
 
+            updateTimer.Interval = 1000 * 60 * 5;
+            updateTimer.Elapsed += new ElapsedEventHandler(UpdateTimerElapsed);
+            updateTimer.Enabled = true;
+            updateTimer.Start();
 
         }
 
-        private static void Timer2Elapsed(object source, ElapsedEventArgs e)
+        private static void LogTimerElapsed(object source, ElapsedEventArgs e)
         {
-            File.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\Log.txt");
+            File.WriteAllText(programYolu + "\\Logs\\Log.txt", string.Empty);
         }
 
         protected override void OnStop()
         {
             logger.LogWithMessage("Servis durdu." + DateTime.Now + "\n\n");
-            timer.Stop();
+            inventoryTimer.Stop();
         }
-        private async void TimerElapsed(object sender, ElapsedEventArgs e)
+        private async void InventoryTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            await Task.Run(() => _updateWorker.CheckUpdateSilently());
-
-            logger.LogWithMessage("Servis Çalışıyor." + DateTime.Now);
-            string veri = EnvanterBilgileriniAl();
-            await EnvanterBilgileriniGonder(veri);
-            if (DateTime.Now.Hour == 15 && DateTime.Now.Minute == 0)
+            logger.LogWithMessage("Servis Çalışıyor. " + DateTime.Now);
+            try
             {
+                string veri = EnvanterBilgileriniAl();
                 await EnvanterBilgileriniGonder(veri);
-                logger.LogWithMessage($"Log'a yazildi:\n {veri}");
+                if (DateTime.Now.Hour == 15 && DateTime.Now.Minute == 0)
+                {
+                    await EnvanterBilgileriniGonder(veri);
+                }
             }
+            catch (Exception ex)
+            {
+                logger.LogWithMessage($"Hata: " + ex.Message);
+
+            }
+        }
+        private async void UpdateTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            _ = Task.Run(async () => await _updateWorker.CheckUpdateSilently());
         }
         private string EnvanterBilgileriniAl()
         {
@@ -186,7 +200,7 @@ namespace EnvanterServis
             request.Headers.Add("EYP_API_KEY", apiKey);
             request.Content = new StringContent(veri, Encoding.UTF8, "application/json");
 
-            logger.LogWithMessage($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
+            logger.LogWithMessage($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n");
 
             try
             {
