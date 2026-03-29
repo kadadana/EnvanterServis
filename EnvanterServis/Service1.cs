@@ -47,7 +47,6 @@ namespace EnvanterServis
 
         protected override void OnStart(string[] args)
         {
-            Task.Run(() => _updateWorker.CheckUpdateSilently());
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
             inventoryTimer.Interval = 1000 * 60 * 5;
