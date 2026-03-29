@@ -42,7 +42,8 @@
             this.serviceInstaller1.Description = "Bilgisayara ait envanter bilgilerini JSON veri olarak uzak sunucuya gönderen Windows Servis uygulaması.";
             this.serviceInstaller1.DisplayName = "EnvanterServis";
             this.serviceInstaller1.ServiceName = "Service1";
-
+            this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
+            this.serviceInstaller1.DelayedAutoStart = true;
 
             // 
             // ProjectInstaller

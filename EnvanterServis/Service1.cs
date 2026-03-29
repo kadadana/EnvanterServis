@@ -12,11 +12,14 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Xml;
 using System.Globalization;
+using EnvanterServis.Helpers;
 
 namespace EnvanterServis
 {
     public partial class Service1 : ServiceBase
     {
+        private UpdateWorker _updateWorker = new UpdateWorker();
+        Logger logger = new Logger();
         string apiKey = Environment.GetEnvironmentVariable("EYP_SERVICE_KEY");
         string seriNo;
         string computerName;
@@ -33,8 +36,7 @@ namespace EnvanterServis
         readonly HttpClient _httpClient = new HttpClient();
 
         static string programYolu = AppDomain.CurrentDomain.BaseDirectory.ToString();
-        string xmlPath = programYolu + "\\appconfig.xml";
-        string _serverUrl;
+        string _serverUrl = "http://192.168.1.210:5105/api/inventory";
         Timer timer = new Timer();
         Timer timer2 = new Timer();
         public Service1()
@@ -42,20 +44,11 @@ namespace EnvanterServis
             InitializeComponent();
         }
 
-        protected override async void OnStart(string[] args)
+        protected override void OnStart(string[] args)
         {
-            Logger("Servis çalışmaya başladı." + DateTime.Now);
+            Task.Run(() => _updateWorker.CheckUpdateSilently());
+            logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
-            if (File.Exists(xmlPath))
-            {
-                _serverUrl = ServerURLfromXML(xmlPath);
-            }
-            else
-            {
-                Logger("Sunucu yolu bulunamadi.");
-            }
-            string veri = EnvanterBilgileriniAl();
-            await EnvanterBilgileriniGonder(veri);
             timer.Interval = 1000 * 60 * 5;
             timer.Elapsed += new ElapsedEventHandler(TimerElapsed);
             timer.Enabled = true;
@@ -76,24 +69,25 @@ namespace EnvanterServis
 
         protected override void OnStop()
         {
-            Logger("Servis durdu." + DateTime.Now + "\n\n");
+            logger.LogWithMessage("Servis durdu." + DateTime.Now + "\n\n");
             timer.Stop();
         }
         private async void TimerElapsed(object sender, ElapsedEventArgs e)
         {
-            Logger("Servis Çalışıyor." + DateTime.Now);
+            await Task.Run(() => _updateWorker.CheckUpdateSilently());
+
+            logger.LogWithMessage("Servis Çalışıyor." + DateTime.Now);
             string veri = EnvanterBilgileriniAl();
             await EnvanterBilgileriniGonder(veri);
             if (DateTime.Now.Hour == 15 && DateTime.Now.Minute == 0)
             {
                 await EnvanterBilgileriniGonder(veri);
-                Logger($"Log'a yazildi:\n {veri}");
+                logger.LogWithMessage($"Log'a yazildi:\n {veri}");
             }
         }
         private string EnvanterBilgileriniAl()
         {
             ulong ramCapacity;
-
 
             ManagementObjectSearcher biosSearcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
             foreach (ManagementObject obj in biosSearcher.Get().Cast<ManagementObject>())
@@ -192,7 +186,7 @@ namespace EnvanterServis
             request.Headers.Add("EYP_API_KEY", apiKey);
             request.Content = new StringContent(veri, Encoding.UTF8, "application/json");
 
-            Logger($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
+            logger.LogWithMessage($"Sunucuya({_serverUrl}) gönderilmeye calisiliyor:\n{veri}");
 
             try
             {
@@ -200,53 +194,19 @@ namespace EnvanterServis
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Logger($"-------------------------------------\n{veri}" + "\nSunucuya basariyla gonderildi." + "\n-------------------------------------");
+                    logger.LogWithMessage($"-------------------------------------\n{veri}" + "\nSunucuya basariyla gonderildi." + "\n-------------------------------------");
                 }
                 else
                 {
-                    Logger($"Sunucuya gönderilemedi. Hata kodu: {response.StatusCode}");
+                    logger.LogWithMessage($"Sunucuya gönderilemedi. Hata kodu: {response.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
-                Logger($"HATA: {ex.Message}");
-                Logger($"Inner Exception: {ex.InnerException?.Message}");
-                Logger($"Stack Trace: {ex.StackTrace}");
+                logger.LogWithMessage($"HATA: {ex.Message}");
+                logger.LogWithMessage($"Inner Exception: {ex.InnerException?.Message}");
+                logger.LogWithMessage($"Stack Trace: {ex.StackTrace}");
             }
-        }
-
-        private static void Logger(string mesaj)
-        {
-            string dosyaYolu = AppDomain.CurrentDomain.BaseDirectory + "\\Logs";
-            if (!Directory.Exists(dosyaYolu))
-            {
-                Directory.CreateDirectory(dosyaYolu);
-            }
-
-            string textYolu = dosyaYolu + "\\Log.txt";
-
-            if (!File.Exists(textYolu))
-            {
-                using (StreamWriter sw = File.CreateText(textYolu))
-                {
-                    sw.WriteLine(mesaj);
-                }
-            }
-            else
-            {
-                using (StreamWriter sw = File.AppendText(textYolu))
-                {
-                    sw.WriteLine(mesaj);
-                }
-            }
-        }
-        private static string ServerURLfromXML(string xmlFilePath)
-        {
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(xmlFilePath);
-
-            XmlNode node = xmlDoc.SelectSingleNode("/config/serverIp");
-            return node?.InnerText ?? "Bulunamadi";
         }
         private string GetLocalIPv4()
         {
