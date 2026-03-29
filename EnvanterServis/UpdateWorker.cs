@@ -20,11 +20,13 @@ public class UpdateWorker
         {
             using (HttpClient client = new HttpClient())
             {
+                client.DefaultRequestHeaders.Add("User-Agent", "EnvanterServis-Updater");
+
                 string latestVersion = (await client.GetStringAsync(VersionUrl)).Trim();
 
                 if (latestVersion != CurrentVersion)
                 {
-                    logger.LogWithMessage($"Yeni versiyon bulundu: {latestVersion}. Mevcut: {CurrentVersion}");
+                    logger.LogWithMessage($"Yeni versiyon bulundu: {latestVersion}");
 
                     string servicePath = AppDomain.CurrentDomain.BaseDirectory;
                     string zipPath = Path.Combine(servicePath, "update.zip");
@@ -42,10 +44,9 @@ public class UpdateWorker
         }
         catch (Exception ex)
         {
-            logger.LogWithMessage("Update sırasında hata: " + ex.Message);
+            logger.LogWithMessage("Güncelleme hatası: " + ex.Message);
         }
     }
-
     private void ApplyZipUpdate(string servicePath, string zipPath, string extractPath)
     {
         string currentExe = Path.Combine(servicePath, "EnvanterServis.exe");
