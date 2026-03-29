@@ -18,7 +18,7 @@ namespace EnvanterServis
 {
     public partial class Service1 : ServiceBase
     {
-        private UpdateWorker _updateWorker = new UpdateWorker();
+        private UpdateWorker _updateWorker;
         Logger logger = new Logger();
         string apiKey = Environment.GetEnvironmentVariable("EYP_SERVICE_KEY");
         string seriNo;
@@ -47,6 +47,7 @@ namespace EnvanterServis
 
         protected override void OnStart(string[] args)
         {
+            _updateWorker = new UpdateWorker();
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
             inventoryTimer.Interval = 1000 * 60 * 5;
