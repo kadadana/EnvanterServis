@@ -50,19 +50,15 @@ namespace EnvanterServis
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
             inventoryTimer.Interval = 1000 * 60 * 5;
-            inventoryTimer.Elapsed += InventoryTimerElapsed;
+            inventoryTimer.Elapsed += TimerElapsed;
             inventoryTimer.Start();
 
-            updateTimer.Interval = 1000 * 60 * 5;
-            updateTimer.Elapsed += UpdateTimerElapsed;
-            updateTimer.Start();
 
             logTimer.Interval = 1000 * 60 * 60;
             logTimer.Elapsed += LogTimerElapsed;
             logTimer.Start();
 
-            _ = Task.Run(() => InventoryTimerElapsed(null, null));
-            _ = Task.Run(() => UpdateTimerElapsed(null, null));
+            _ = Task.Run(() => TimerElapsed(null, null));
         }
 
         private static void LogTimerElapsed(object source, ElapsedEventArgs e)
@@ -74,9 +70,12 @@ namespace EnvanterServis
         {
             logger.LogWithMessage("Servis durdu." + DateTime.Now + "\n\n");
             inventoryTimer.Stop();
+            updateTimer.Stop();
+            logTimer.Stop();
         }
-        private async void InventoryTimerElapsed(object sender, ElapsedEventArgs e)
+        private async void TimerElapsed(object sender, ElapsedEventArgs e)
         {
+            await _updateWorker.CheckUpdateSilently();
             logger.LogWithMessage("Servis Çalışıyor. " + DateTime.Now);
             try
             {
@@ -92,10 +91,6 @@ namespace EnvanterServis
                 logger.LogWithMessage($"Hata: " + ex.Message);
 
             }
-        }
-        private async void UpdateTimerElapsed(object sender, ElapsedEventArgs e)
-        {
-            _ = Task.Run(async () => await _updateWorker.CheckUpdateSilently());
         }
         private string EnvanterBilgileriniAl()
         {
