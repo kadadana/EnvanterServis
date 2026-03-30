@@ -95,33 +95,62 @@ namespace EnvanterServis
         }
         private string EnvanterBilgileriniAl()
         {
-            ulong ramCapacity;
+            seriNo = "N/A"; computerName = "N/A"; model = "N/A"; userName = "Sistem";
+            ramGB = "0"; macAddress = "00:00:00:00:00:00"; islemci = "N/A"; osName = "N/A"; osVer = "N/A";
 
-            ManagementObjectSearcher biosSearcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
-            foreach (ManagementObject obj in biosSearcher.Get().Cast<ManagementObject>())
+            try
             {
-                seriNo = obj["SerialNumber"].ToString();
+                ManagementObjectSearcher biosSearcher = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
+                foreach (ManagementObject obj in biosSearcher.Get().Cast<ManagementObject>())
+                {
+                    seriNo = obj["SerialNumber"]?.ToString() ?? "N/A";
+                }
 
+                ManagementObjectSearcher compSearcher = new ManagementObjectSearcher("SELECT Name, Model, TotalPhysicalMemory, UserName FROM Win32_ComputerSystem");
+                foreach (ManagementObject obj in compSearcher.Get().Cast<ManagementObject>())
+                {
+                    computerName = obj["Name"]?.ToString() ?? "N/A";
+                    model = obj["Model"]?.ToString() ?? "VM-Model";
 
+                    var rawUser = obj["UserName"]?.ToString();
+                    if (!string.IsNullOrEmpty(rawUser) && rawUser.Contains("\\"))
+                    {
+                        userName = rawUser.Split('\\')[1];
+                    }
+                    else
+                    {
+                        userName = rawUser ?? "Sistem";
+                    }
+
+                    if (obj["TotalPhysicalMemory"] != null)
+                    {
+                        ulong ramCapacity = (ulong)obj["TotalPhysicalMemory"];
+                        ramGB = Math.Ceiling((decimal)ramCapacity / 1073741824).ToString("F2", CultureInfo.InvariantCulture);
+                    }
+                }
+                ManagementObjectSearcher macSearcher = new ManagementObjectSearcher("SELECT MacAddress FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2");
+                foreach (ManagementObject obj in macSearcher.Get().Cast<ManagementObject>())
+                {
+                    macAddress = obj["MacAddress"]?.ToString() ?? "00:00:00:00:00:00";
+                }
+
+                ManagementObjectSearcher procSearcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
+                foreach (ManagementObject obj in procSearcher.Get().Cast<ManagementObject>())
+                {
+                    islemci = obj["Name"]?.ToString()?.Trim() ?? "N/A";
+                }
+
+                ManagementObjectSearcher osSearcher = new ManagementObjectSearcher("SELECT Caption, Version FROM Win32_OperatingSystem");
+                foreach (ManagementObject obj in osSearcher.Get().Cast<ManagementObject>())
+                {
+                    osName = obj["Caption"]?.ToString() ?? "Windows";
+                    osVer = obj["Version"]?.ToString() ?? "N/A";
+                }
+                lastIpAddress = GetLocalIPv4();
             }
-
-            ManagementObjectSearcher compSearcher = new ManagementObjectSearcher("SELECT Name, Model, TotalPhysicalMemory, UserName FROM Win32_ComputerSystem");
-            foreach (ManagementObject obj in compSearcher.Get().Cast<ManagementObject>())
+            catch (Exception ex)
             {
-                computerName = obj["Name"].ToString();
-                userName = obj["UserName"].ToString();
-                userName = userName.Split('\\')[1];
-                model = obj["Model"].ToString();
-                ramCapacity = (ulong)obj["TotalPhysicalMemory"];
-                ramGB = Math.Ceiling((decimal)ramCapacity / 1073741824).ToString("F2", CultureInfo.InvariantCulture);
-            }
-
-            ManagementObjectSearcher osSearcher = new ManagementObjectSearcher("SELECT Caption, Version FROM Win32_OperatingSystem");
-            foreach (ManagementObject obj in osSearcher.Get().Cast<ManagementObject>())
-            {
-                osName = obj["Caption"].ToString();
-                osVer = obj["Version"].ToString();
-
+                logger.LogWithMessage($"WMI veri toplama hatası: {ex.Message}");
             }
 
             StringBuilder sb = new StringBuilder();
@@ -145,26 +174,6 @@ namespace EnvanterServis
             }
 
             driveInfo = sb.ToString();
-
-
-
-            ManagementObjectSearcher macSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2");
-            foreach (ManagementObject obj in macSearcher.Get().Cast<ManagementObject>())
-            {
-                macAddress = obj["MacAddress"].ToString();
-
-            }
-
-
-            ManagementObjectSearcher procSearcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-            foreach (ManagementObject obj in procSearcher.Get().Cast<ManagementObject>())
-            {
-                islemci = obj["Name"].ToString().Trim();
-
-            }
-
-            lastIpAddress = GetLocalIPv4();
-
 
             return "{\n" +
                 $"\"SeriNo\": \"{seriNo}\",\n" +
