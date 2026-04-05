@@ -50,7 +50,7 @@ namespace EnvanterServis
             _updateWorker = new UpdateWorker();
             logger.LogWithMessage("Servis çalışmaya başladı." + DateTime.Now);
 
-            inventoryTimer.Interval = 1000 * 60 * 5;
+            inventoryTimer.Interval = 1000 * 60 * 60;
             inventoryTimer.Elapsed += TimerElapsed;
             inventoryTimer.Start();
 
